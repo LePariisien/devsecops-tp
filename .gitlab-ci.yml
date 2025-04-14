@@ -1,0 +1,45 @@
+stages:
+  - build
+  - scan
+  - test
+
+variables:
+  IMAGE_NAME: devsecops-tp-app
+  DOCKER_HOST: tcp://docker:2375/
+
+build_image:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t $IMAGE_NAME .
+
+scan_trivy:
+  stage: scan
+  image: aquasec/trivy:latest
+  script:
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $IMAGE_NAME
+
+scan_snyk:
+  stage: scan
+  image: node:18
+  before_script:
+    - npm install -g snyk
+  script:
+    - snyk auth $SNYK_TOKEN
+    - snyk test
+    - snyk monitor
+  only:
+    - main
+  rules:
+    - exists:
+        - package.json
+
+run_tests:
+  stage: test
+  image: node:18
+  script:
+    - cd app
+    - npm install
+    - echo "Aucun test défini pour l’instant"
